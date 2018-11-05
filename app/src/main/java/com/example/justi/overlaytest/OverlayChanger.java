@@ -7,12 +7,12 @@ public class OverlayChanger{
     private OverlayListener listener;
     private static OverlayChanger instance;
 
-
-    private OverlayChanger(OverlayListener listener){
+    public OverlayChanger(OverlayListener listener){
         this.listener = listener;
     }
 
 
+    //TODO: Remove singleton in MAD Project.
     public static OverlayChanger getInstance(OverlayListener listener){
         if (instance == null){ //if there is no instance available... create new one
             instance = new OverlayChanger(listener);

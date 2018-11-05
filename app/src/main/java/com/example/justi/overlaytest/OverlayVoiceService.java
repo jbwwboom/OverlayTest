@@ -3,12 +3,10 @@ package com.example.justi.overlaytest;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
-import android.content.res.Resources;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.os.Build;
 import android.os.IBinder;
-import android.util.DisplayMetrics;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
@@ -30,12 +28,14 @@ public class OverlayVoiceService extends Service implements OnTouchListener, OnC
     private View topLeftView;
 
     private Button overlayedButton;
+    private ImageView chatHead;
     private float offsetX;
     private float offsetY;
     private int originalXPos;
     private int originalYPos;
     private boolean moving;
     private WindowManager wm;
+    private OverlayChanger overlayChanger;
 
     //For timer
     private int i = 0;
@@ -57,7 +57,8 @@ public class OverlayVoiceService extends Service implements OnTouchListener, OnC
         tts = new TextToSpeech(getApplicationContext(), this);
 
         //For timer
-        OverlayChanger.getInstance(this).handlerEvent();
+        overlayChanger = new OverlayChanger(this);
+        overlayChanger.handlerEvent();
 
         wm = (WindowManager) getSystemService(Context.WINDOW_SERVICE);
 
@@ -68,43 +69,42 @@ public class OverlayVoiceService extends Service implements OnTouchListener, OnC
             LAYOUT_FLAG = WindowManager.LayoutParams.TYPE_PHONE;
         }
 
+        chatHead = new ImageView(this);
+        chatHead.setImageResource(R.drawable.blue_rectangle);
+        chatHead.setOnTouchListener(this);
+
+        WindowManager.LayoutParams paramsCircle = new WindowManager.LayoutParams(
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                LAYOUT_FLAG,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                PixelFormat.TRANSLUCENT);
+
+        paramsCircle.gravity = Gravity.TOP | Gravity.LEFT;
+        paramsCircle.x = 30;
+        paramsCircle.y = 10;
+
+        wm.addView(chatHead, paramsCircle);
+
         overlayedButton = new Button(this);
         //tts
         String speed = "Snelheid: " + i + " km/h";
         tts.speak(speed,TextToSpeech.QUEUE_FLUSH,null,null);
-        overlayedButton.setText("Snelheid: " + i + " km/h");
+        //overlayedButton.setText(speed);
+        overlayedButton.setText(i + "");
 
 
         overlayedButton.setOnTouchListener(this);
-        //overlayedButton.setAlpha(0.0f);
-        //overlayedButton.setBackgroundColor(0x55fe4444);
         overlayedButton.setBackgroundColor(Color.argb(0,0,0,0));
-        //overlayedButton.setBackgroundColor(Color.WHITE);
+        overlayedButton.setTextColor(Color.WHITE);
         overlayedButton.setOnClickListener(this);
+        overlayedButton.setTextSize(30.0F);
 
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT, LAYOUT_FLAG, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL, PixelFormat.TRANSLUCENT);
         params.gravity = Gravity.LEFT | Gravity.TOP;
         params.x = 0;
         params.y = 0;
         wm.addView(overlayedButton, params);
-
-        /*for(int i = 0; i <= 120; i += 60){
-            ImageView chatHead = new ImageView(this);
-            chatHead.setImageResource(R.drawable.red_circle);
-
-            WindowManager.LayoutParams paramsCircle = new WindowManager.LayoutParams(
-                    WindowManager.LayoutParams.WRAP_CONTENT,
-                    WindowManager.LayoutParams.WRAP_CONTENT,
-                    LAYOUT_FLAG,
-                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-                    PixelFormat.TRANSLUCENT);
-
-            paramsCircle.gravity = Gravity.TOP | Gravity.LEFT;
-            paramsCircle.x = i * 4;
-            paramsCircle.y = 0;
-
-            wm.addView(chatHead, paramsCircle);
-        }*/
 
         topLeftView = new View(this);
         WindowManager.LayoutParams topLeftParams = new WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT, LAYOUT_FLAG, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL, PixelFormat.TRANSLUCENT);
@@ -123,8 +123,10 @@ public class OverlayVoiceService extends Service implements OnTouchListener, OnC
         if (overlayedButton != null) {
             wm.removeView(overlayedButton);
             wm.removeView(topLeftView);
+            wm.removeView(chatHead);
             overlayedButton = null;
             topLeftView = null;
+            chatHead = null;
         }
     }
 
@@ -138,7 +140,7 @@ public class OverlayVoiceService extends Service implements OnTouchListener, OnC
             moving = false;
 
             int[] location = new int[2];
-            overlayedButton.getLocationOnScreen(location);
+            chatHead.getLocationOnScreen(location);
 
             originalXPos = location[0];
             originalYPos = location[1];
@@ -168,7 +170,12 @@ public class OverlayVoiceService extends Service implements OnTouchListener, OnC
             params.x = newX - (topLeftLocationOnScreen[0]);
             params.y = newY - (topLeftLocationOnScreen[1]);
 
+            WindowManager.LayoutParams params2 = (LayoutParams) chatHead.getLayoutParams();
+            params2.x = newX - (topLeftLocationOnScreen[0]) + 30;
+            params2.y = newY - (topLeftLocationOnScreen[1]) + 10;
+
             wm.updateViewLayout(overlayedButton, params);
+            wm.updateViewLayout(chatHead, params2);
             moving = true;
         } else if (event.getAction() == MotionEvent.ACTION_UP) {
             if (moving) {
@@ -187,9 +194,11 @@ public class OverlayVoiceService extends Service implements OnTouchListener, OnC
     @Override
     public void timerEvent() {
         i = new Random().nextInt(100);
-        String speed = "Snelheid: " + i + " km/h";
-        overlayedButton.setText(speed);
-        OverlayChanger.getInstance(this).handlerEvent();
+        String speed = i + "";
+        if(overlayedButton != null){
+            overlayedButton.setText(speed);
+            overlayChanger.handlerEvent();
+        }
 
         if (!tts.isSpeaking()) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
