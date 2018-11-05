@@ -15,6 +15,7 @@ import android.view.View.OnTouchListener;
 import android.view.WindowManager;
 import android.view.WindowManager.LayoutParams;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.Toast;
 import android.speech.tts.TextToSpeech;
@@ -28,6 +29,7 @@ public class OverlayVoiceService extends Service implements OnTouchListener, OnC
     private View topLeftView;
 
     private Button overlayedButton;
+    private ImageButton closeOverlayButton;
     private ImageView chatHead;
     private float offsetX;
     private float offsetY;
@@ -36,6 +38,15 @@ public class OverlayVoiceService extends Service implements OnTouchListener, OnC
     private boolean moving;
     private WindowManager wm;
     private OverlayChanger overlayChanger;
+
+
+    //X-Y Params
+    private int chatheadX = 70;
+    private int chatheadY = 50;
+    private int closeX = 35;
+    private int closeY = 0;
+    private int overlayX = 40;
+    private int overlayY = 40;
 
     //For timer
     private int i = 0;
@@ -73,18 +84,18 @@ public class OverlayVoiceService extends Service implements OnTouchListener, OnC
         chatHead.setImageResource(R.drawable.blue_rectangle);
         chatHead.setOnTouchListener(this);
 
-        WindowManager.LayoutParams paramsCircle = new WindowManager.LayoutParams(
+        WindowManager.LayoutParams paramsRect = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 LAYOUT_FLAG,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
                 PixelFormat.TRANSLUCENT);
 
-        paramsCircle.gravity = Gravity.TOP | Gravity.LEFT;
-        paramsCircle.x = 30;
-        paramsCircle.y = 10;
+        paramsRect.gravity = Gravity.TOP | Gravity.LEFT;
+        paramsRect.x = chatheadX;
+        paramsRect.y = chatheadY;
 
-        wm.addView(chatHead, paramsCircle);
+        wm.addView(chatHead, paramsRect);
 
         overlayedButton = new Button(this);
         //tts
@@ -97,14 +108,25 @@ public class OverlayVoiceService extends Service implements OnTouchListener, OnC
         overlayedButton.setOnTouchListener(this);
         overlayedButton.setBackgroundColor(Color.argb(0,0,0,0));
         overlayedButton.setTextColor(Color.WHITE);
-        overlayedButton.setOnClickListener(this);
         overlayedButton.setTextSize(30.0F);
 
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT, LAYOUT_FLAG, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL, PixelFormat.TRANSLUCENT);
         params.gravity = Gravity.LEFT | Gravity.TOP;
-        params.x = 0;
-        params.y = 0;
+        params.x = overlayX;
+        params.y = overlayY;
         wm.addView(overlayedButton, params);
+
+        closeOverlayButton = new ImageButton(this);
+        closeOverlayButton.setImageResource(R.drawable.ic_close_red_24dp);
+
+        closeOverlayButton.setBackgroundColor(Color.argb(0,0,0,0));
+        closeOverlayButton.setOnClickListener(this);
+
+        WindowManager.LayoutParams closeParams = new WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT, LAYOUT_FLAG, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL, PixelFormat.TRANSLUCENT);
+        closeParams.gravity = Gravity.LEFT | Gravity.TOP;
+        closeParams.x = closeX;
+        closeParams.y = closeY;
+        wm.addView(closeOverlayButton, closeParams);
 
         topLeftView = new View(this);
         WindowManager.LayoutParams topLeftParams = new WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT, LAYOUT_FLAG, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL, PixelFormat.TRANSLUCENT);
@@ -124,9 +146,11 @@ public class OverlayVoiceService extends Service implements OnTouchListener, OnC
             wm.removeView(overlayedButton);
             wm.removeView(topLeftView);
             wm.removeView(chatHead);
+            wm.removeView(closeOverlayButton);
             overlayedButton = null;
             topLeftView = null;
             chatHead = null;
+            closeOverlayButton = null;
         }
     }
 
@@ -167,15 +191,20 @@ public class OverlayVoiceService extends Service implements OnTouchListener, OnC
                 return false;
             }
 
-            params.x = newX - (topLeftLocationOnScreen[0]);
-            params.y = newY - (topLeftLocationOnScreen[1]);
+            params.x = newX - (topLeftLocationOnScreen[0]) + overlayX;
+            params.y = newY - (topLeftLocationOnScreen[1]) + overlayY;
 
             WindowManager.LayoutParams params2 = (LayoutParams) chatHead.getLayoutParams();
-            params2.x = newX - (topLeftLocationOnScreen[0]) + 30;
-            params2.y = newY - (topLeftLocationOnScreen[1]) + 10;
+            params2.x = newX - (topLeftLocationOnScreen[0]) + chatheadX;
+            params2.y = newY - (topLeftLocationOnScreen[1]) + chatheadY;
+
+            WindowManager.LayoutParams params3 = (LayoutParams) closeOverlayButton.getLayoutParams();
+            params3.x = newX - (topLeftLocationOnScreen[0]) + closeX;
+            params3.y = newY - (topLeftLocationOnScreen[1]) + closeY;
 
             wm.updateViewLayout(overlayedButton, params);
             wm.updateViewLayout(chatHead, params2);
+            wm.updateViewLayout(closeOverlayButton, params3);
             moving = true;
         } else if (event.getAction() == MotionEvent.ACTION_UP) {
             if (moving) {
@@ -188,7 +217,8 @@ public class OverlayVoiceService extends Service implements OnTouchListener, OnC
 
     @Override
     public void onClick(View v) {
-        Toast.makeText(this, "Overlay button click event", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Overlay uit", Toast.LENGTH_SHORT).show();
+        this.onDestroy();
     }
 
     @Override
